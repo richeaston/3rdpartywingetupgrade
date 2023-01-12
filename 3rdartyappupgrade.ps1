@@ -5,14 +5,15 @@
 # Desription: parse Winget upgrade output to a powershell friendly array
 #########################################
 
-
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 clear-host    
 $scriptpath = $MyInvocation.MyCommand.Path
 $dir = Split-Path $scriptpath
 $exclusions = get-content "$dir\exclusions.txt"
 $Upgraderesult = (winget upgrade) -split ('[\r\n]')
+$Upgraderesult.count
 $results = @()
+
 $upgraderesult | foreach-object {
     if (!($_ -like '*   -\| *' -or $_ -like '   -\ *' -or $_ -like '   - *' -or $_ -like '*upgrades available' -OR $_ -like '-*' )) {
         if ($_.Startswith("Name")) {
@@ -42,9 +43,13 @@ foreach ($app in $results) {
     } else {
         Write-host "$($app.name) New version $($app.Available) Available"
         $ToUpgrade += $app
-        Winget upgrade $($app.id) --silent --accept-package-agreements --accept-source-agreements --force --verbose-logs --purge
     }
 }
 
 $ToUpgrade | sort-object Name | FT -AutoSize
+foreach ($a in $ToUpgrade) {
+    Write-host "Upgrading $($a.Name) to version $($a.available)."
+    Winget upgrade --id $($a.id)
+}
 
+Write-host "Upgrades completed"
